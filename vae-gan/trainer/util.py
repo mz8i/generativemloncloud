@@ -17,7 +17,7 @@ import os
 import tensorflow as tf
 
 
-def read_and_decode(data_directory, batch_size, mode, resized_image_size,
+def read_and_decode(data_directory, batch_size, mode, resized_image_size, channels,
                     crop_image_size, center_crop):
   """Reads and decodes TF Record files.
 
@@ -50,7 +50,7 @@ def read_and_decode(data_directory, batch_size, mode, resized_image_size,
           'image/width': tf.FixedLenFeature([], tf.int64),
       })
 
-  image = tf.image.decode_png(features['image/encoded'], channels=4)
+  image = tf.image.decode_png(features['image/encoded'], channels=channels)
   original_image_height = tf.cast(features['image/height'], tf.int32)
   original_image_width = tf.cast(features['image/width'], tf.int32)
 
@@ -81,14 +81,14 @@ def read_and_decode(data_directory, batch_size, mode, resized_image_size,
   # Resize image to desired pixel dimensions.
   image = tf.image.resize_images(image,
                                  [resized_image_size, resized_image_size])
-  image.set_shape((resized_image_size, resized_image_size, 4))
+  image.set_shape((resized_image_size, resized_image_size, channels))
 
   image = tf.cast(image, tf.float32) * (1. / 127.5) - 1
   images = tf.train.shuffle_batch(
       [image],
       batch_size=batch_size,
       num_threads=1,
-      capacity=1000 + 4 * batch_size,
+      capacity=1000 + channels * batch_size, # this was a 3 initially, not sure if related to no. of channels
       min_after_dequeue=1000)
 
   return images

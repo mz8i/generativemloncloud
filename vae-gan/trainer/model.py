@@ -67,6 +67,7 @@ def create_model():
   parser.add_argument('--dropout', type=float, default=0.5)
   parser.add_argument('--beta1', type=float, default=0.5)
   parser.add_argument('--resized_image_size', type=int, default=64)
+  parser.add_argument('--channels', type=int, default=4, choices=[1,3,4])
   parser.add_argument('--crop_image_dimension', type=int, default=None)
   parser.add_argument(
       '--center_crop', dest='center_crop', default=False, action='store_true')
@@ -79,7 +80,7 @@ def create_model():
   override_if_not_in_args('--min_train_eval_rate', '2', task_args)
 
   return Model(args.learning_rate, args.dropout, args.beta1,
-               args.resized_image_size, args.crop_image_dimension,
+               args.resized_image_size, args.channels, args.crop_image_dimension,
                args.center_crop), task_args
 
 
@@ -108,7 +109,7 @@ class GraphReferences(object):
 class Model(object):
   """Tensorflow model for Rgb VAE-GAN."""
 
-  def __init__(self, learning_rate, dropout, beta1, resized_image_size,
+  def __init__(self, learning_rate, dropout, beta1, resized_image_size, channels,
                crop_image_dimension, center_crop):
     """Initializes VAE-GAN. DCGAN architecture: https://arxiv.org/abs/1511.06434
 
@@ -124,6 +125,7 @@ class Model(object):
     self.dropout = dropout
     self.beta1 = beta1
     self.resized_image_size = resized_image_size
+    self.channels = channels
     self.crop_image_dimension = crop_image_dimension
     self.center_crop = center_crop
     self.has_exported_embed_in = False
@@ -173,11 +175,11 @@ class Model(object):
         mode_string = 'validation'
 
       tensors.image = util.read_and_decode(
-          data_dir, batch_size, mode_string, self.resized_image_size,
+          data_dir, batch_size, mode_string, self.resized_image_size, self.channels,
           self.crop_image_dimension, self.center_crop)
 
       tensors.image = tf.reshape(tensors.image, [
-          -1, self.resized_image_size, self.resized_image_size, 4
+          -1, self.resized_image_size, self.resized_image_size, self.channels
       ])
 
       tf.summary.image('original_images', tensors.image, 1)
@@ -186,7 +188,7 @@ class Model(object):
 
     if mode is PREDICT_IMAGE_IN:
       tensors.image = tf.reshape(tensors.image, [
-          -1, self.resized_image_size, self.resized_image_size, 4
+          -1, self.resized_image_size, self.resized_image_size, self.channels
       ])
       tensors.embeddings, y_mean, _ = self.encode(tensors.image, False)
       tensors.predictions = tensors.embeddings
@@ -450,7 +452,7 @@ class Model(object):
       # "Deconvolution" Layer 3
       deconv = tf.layers.conv2d_transpose(
           inputs=bn,
-          filters=4,
+          filters=self.channels,
           kernel_size=4,
           strides=(2, 2),
           padding='same',
@@ -617,11 +619,11 @@ class Model(object):
         build.save()
 
   def process_image(self, input_img):
-    image = tf.image.decode_png(input_img, channels=4)
+    image = tf.image.decode_png(input_img)
     # image = tf.image.central_crop(image, 0.75)
     image = tf.image.resize_images(
         image, [self.resized_image_size, self.resized_image_size])
-    image.set_shape((self.resized_image_size, self.resized_image_size, 4))
+    image.set_shape((self.resized_image_size, self.resized_image_size, self.channels))
 
     image = tf.cast(image, tf.float32) / 127.5 - 1
     return image

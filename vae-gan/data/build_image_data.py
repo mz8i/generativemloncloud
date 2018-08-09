@@ -93,7 +93,7 @@ def _bytes_feature(value):
   return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
 
-def _convert_to_example(filename, image_buffer, height, width):
+def _convert_to_example(filename, image_buffer, height, width, channels):
   """Build an Example proto for an example.
 
   Args:
@@ -104,9 +104,7 @@ def _convert_to_example(filename, image_buffer, height, width):
   Returns:
     Example proto
   """
-
-  colorspace = 'RGBA'
-  channels = 4
+  colorspace = 'RGBA' if channels == 4 else 'RGB' if channels == 3 else 'MONO' if channels == 1 else 'unknown'
   image_format = 'PNG'
 
   example = tf.train.Example(features=tf.train.Features(feature={
@@ -131,38 +129,20 @@ def _convert_to_example(filename, image_buffer, height, width):
 class ImageCoder(object):
   """Helper class that provides TensorFlow image coding utilities."""
 
-  def __init__(self):
+  def __init__(self, n_channels):
     # Create a single Session to run all image coding calls.
     self._sess = tf.Session()
 
-    # Initializes function that converts PNG to JPEG data.
-    self._png_data = tf.placeholder(dtype=tf.string)
-    image = tf.image.decode_png(self._png_data, channels=3)
-    self._png_to_jpeg = tf.image.encode_jpeg(image, format='rgb', quality=100)
+    self.channels = n_channels
 
-    # Initializes function that decodes RGB JPEG data.
-    self._decode_jpeg_data = tf.placeholder(dtype=tf.string)
-    self._decode_jpeg = tf.image.decode_jpeg(self._decode_jpeg_data, channels=3)
-
+    # Initializes function that decodes PNG data.
     self._decode_png_data = tf.placeholder(dtype=tf.string)
-    self._decode_png = tf.image.decode_png(self._decode_png_data, channels=4)
-
-  def png_to_jpeg(self, image_data):
-    return self._sess.run(
-        self._png_to_jpeg, feed_dict={self._png_data: image_data})
-
-  def decode_jpeg(self, image_data):
-    image = self._sess.run(
-        self._decode_jpeg, feed_dict={self._decode_jpeg_data: image_data})
-    assert len(image.shape) == 3
-    assert image.shape[2] == 3
-    return image
+    self._decode_png = tf.image.decode_png(self._decode_png_data)
 
   def decode_png(self, image_data):
     image = self._sess.run(
         self._decode_png, feed_dict={self._decode_png_data: image_data})
     assert len(image.shape) == 3
-    assert image.shape[2] == 4
     return image
 
 
@@ -192,16 +172,15 @@ def _process_image(filename, coder):
   # Read the image file.
   image_data = tf.gfile.FastGFile(filename, 'rb').read()
 
-  # Decode the RGB JPEG.
+  # Decode the RGB PNG.
   image = coder.decode_png(image_data)
 
   # Check that image converted to RGB
-  assert len(image.shape) == 3
   height = image.shape[0]
   width = image.shape[1]
-  assert image.shape[2] == 4
+  channels = image.shape[2]
 
-  return image_data, height, width
+  return image_data, height, width, channels
 
 
 def _process_image_files_batch(coder, thread_index, ranges, name, filenames,
@@ -241,9 +220,9 @@ def _process_image_files_batch(coder, thread_index, ranges, name, filenames,
     for i in files_in_shard:
       filename = filenames[i]
 
-      image_buffer, height, width = _process_image(filename, coder)
+      image_buffer, height, width, channels = _process_image(filename, coder)
 
-      example = _convert_to_example(filename, image_buffer, height, width)
+      example = _convert_to_example(filename, image_buffer, height, width, channels)
       writer.write(example.SerializeToString())
       shard_counter += 1
       counter += 1
@@ -322,7 +301,7 @@ def _find_image_files(data_dir):
   """
   filenames = []
 
-  file_extensions = ['.jpeg', '.jpg', '.png']
+  file_extensions = ['.png']
   file_extensions += [ext.upper() for ext in file_extensions]
 
   for ext in file_extensions:
