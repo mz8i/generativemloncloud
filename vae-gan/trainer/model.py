@@ -450,7 +450,7 @@ class Model(object):
       # "Deconvolution" Layer 3
       deconv = tf.layers.conv2d_transpose(
           inputs=bn,
-          filters=3,
+          filters=4,
           kernel_size=4,
           strides=(2, 2),
           padding='same',
@@ -617,11 +617,11 @@ class Model(object):
         build.save()
 
   def process_image(self, input_img):
-    image = tf.image.decode_jpeg(input_img, channels=3)
-    image = tf.image.central_crop(image, 0.75)
+    image = tf.image.decode_png(input_img, channels=4)
+    # image = tf.image.central_crop(image, 0.75)
     image = tf.image.resize_images(
         image, [self.resized_image_size, self.resized_image_size])
-    image.set_shape((self.resized_image_size, self.resized_image_size, 3))
+    image.set_shape((self.resized_image_size, self.resized_image_size, 4))
 
     image = tf.cast(image, tf.float32) / 127.5 - 1
     return image

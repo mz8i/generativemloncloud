@@ -50,7 +50,7 @@ def read_and_decode(data_directory, batch_size, mode, resized_image_size,
           'image/width': tf.FixedLenFeature([], tf.int64),
       })
 
-  image = tf.image.decode_jpeg(features['image/encoded'], channels=3)
+  image = tf.image.decode_image(features['image/encoded'])
   original_image_height = tf.cast(features['image/height'], tf.int32)
   original_image_width = tf.cast(features['image/width'], tf.int32)
 

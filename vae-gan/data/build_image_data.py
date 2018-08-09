@@ -105,9 +105,9 @@ def _convert_to_example(filename, image_buffer, height, width):
     Example proto
   """
 
-  colorspace = 'RGB'
-  channels = 3
-  image_format = 'JPEG'
+  colorspace = 'RGBA'
+  channels = 4
+  image_format = 'PNG'
 
   example = tf.train.Example(features=tf.train.Features(feature={
       'image/height':
@@ -144,6 +144,9 @@ class ImageCoder(object):
     self._decode_jpeg_data = tf.placeholder(dtype=tf.string)
     self._decode_jpeg = tf.image.decode_jpeg(self._decode_jpeg_data, channels=3)
 
+    self._decode_png_data = tf.placeholder(dtype=tf.string)
+    self._decode_png = tf.image.decode_png(self._dedoce_png_data, channels=4)
+
   def png_to_jpeg(self, image_data):
     return self._sess.run(
         self._png_to_jpeg, feed_dict={self._png_data: image_data})
@@ -153,6 +156,13 @@ class ImageCoder(object):
         self._decode_jpeg, feed_dict={self._decode_jpeg_data: image_data})
     assert len(image.shape) == 3
     assert image.shape[2] == 3
+    return image
+
+  def decode_png(self, image_data):
+    image = self._sess.run(
+        self._decode_png, feed_dict={self._decode_png_data: image_data})
+    assert len(imag.shape) == 3
+    assert image.shape[2] == 4
     return image
 
 
@@ -182,19 +192,14 @@ def _process_image(filename, coder):
   # Read the image file.
   image_data = tf.gfile.FastGFile(filename, 'r').read()
 
-  # Convert any PNG to JPEG's for consistency.
-  if _is_png(filename):
-    print('Converting PNG to JPEG for %s' % filename)
-    image_data = coder.png_to_jpeg(image_data)
-
   # Decode the RGB JPEG.
-  image = coder.decode_jpeg(image_data)
+  image = coder.decode_png(image_data)
 
   # Check that image converted to RGB
   assert len(image.shape) == 3
   height = image.shape[0]
   width = image.shape[1]
-  assert image.shape[2] == 3
+  assert image.shape[2] == 4
 
   return image_data, height, width
 
