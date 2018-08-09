@@ -145,7 +145,7 @@ class ImageCoder(object):
     self._decode_jpeg = tf.image.decode_jpeg(self._decode_jpeg_data, channels=3)
 
     self._decode_png_data = tf.placeholder(dtype=tf.string)
-    self._decode_png = tf.image.decode_png(self._dedoce_png_data, channels=4)
+    self._decode_png = tf.image.decode_png(self._decode_png_data, channels=4)
 
   def png_to_jpeg(self, image_data):
     return self._sess.run(
@@ -161,7 +161,7 @@ class ImageCoder(object):
   def decode_png(self, image_data):
     image = self._sess.run(
         self._decode_png, feed_dict={self._decode_png_data: image_data})
-    assert len(imag.shape) == 3
+    assert len(image.shape) == 3
     assert image.shape[2] == 4
     return image
 
@@ -339,7 +339,7 @@ def _find_image_files(data_dir):
 
   filenames = [filenames[i] for i in shuffled_index]
 
-  logging.info('Found %d JPEG files inside %s.', len(filenames), data_dir)
+  logging.info('Found %d image files inside %s.', len(filenames), data_dir)
   return filenames
 
 
