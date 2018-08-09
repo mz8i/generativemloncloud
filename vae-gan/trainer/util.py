@@ -50,7 +50,7 @@ def read_and_decode(data_directory, batch_size, mode, resized_image_size,
           'image/width': tf.FixedLenFeature([], tf.int64),
       })
 
-  image = tf.image.decode_image(features['image/encoded'])
+  image = tf.image.decode_png(features['image/encoded'], channels=4)
   original_image_height = tf.cast(features['image/height'], tf.int32)
   original_image_width = tf.cast(features['image/width'], tf.int32)
 
@@ -59,36 +59,36 @@ def read_and_decode(data_directory, batch_size, mode, resized_image_size,
         tf.minimum(original_image_width, original_image_height), tf.int32)
 
   # Crop rectangular image to centered bounding box.
-  tf.assert_greater_equal(original_image_height, crop_image_size)
-  tf.assert_greater_equal(original_image_width, crop_image_size)
-  if center_crop:
-    image = tf.image.crop_to_bounding_box(
-        image, (original_image_height - crop_image_size) / 2,
-        (original_image_width - crop_image_size) / 2, crop_image_size,
-        crop_image_size)
-  else:
-    image = tf.image.crop_to_bounding_box(
-        image,
-        tf.random_uniform(
-            [],
-            dtype=tf.int32,
-            maxval=(original_image_height - crop_image_size)),
-        tf.random_uniform(
-            [], dtype=tf.int32,
-            maxval=(original_image_width - crop_image_size)), crop_image_size,
-        crop_image_size)
+#  tf.assert_greater_equal(original_image_height, crop_image_size)
+#  tf.assert_greater_equal(original_image_width, crop_image_size)
+#  if center_crop:
+#    image = tf.image.crop_to_bounding_box(
+#        image, (original_image_height - crop_image_size) / 2,
+#        (original_image_width - crop_image_size) / 2, crop_image_size,
+#        crop_image_size)
+#  else:
+#    image = tf.image.crop_to_bounding_box(
+#        image,
+#        tf.random_uniform(
+#            [],
+#            dtype=tf.int32,
+#            maxval=(original_image_height - crop_image_size)),
+#        tf.random_uniform(
+#            [], dtype=tf.int32,
+#            maxval=(original_image_width - crop_image_size)), crop_image_size,
+#        crop_image_size)
 
   # Resize image to desired pixel dimensions.
   image = tf.image.resize_images(image,
                                  [resized_image_size, resized_image_size])
-  image.set_shape((resized_image_size, resized_image_size, 3))
+  image.set_shape((resized_image_size, resized_image_size, 4))
 
   image = tf.cast(image, tf.float32) * (1. / 127.5) - 1
   images = tf.train.shuffle_batch(
       [image],
       batch_size=batch_size,
       num_threads=1,
-      capacity=1000 + 3 * batch_size,
+      capacity=1000 + 4 * batch_size,
       min_after_dequeue=1000)
 
   return images
