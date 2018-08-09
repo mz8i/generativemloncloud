@@ -190,7 +190,7 @@ def _process_image(filename, coder):
     width: integer, image width in pixels.
   """
   # Read the image file.
-  image_data = tf.gfile.FastGFile(filename, 'r').read()
+  image_data = tf.gfile.FastGFile(filename, 'rb').read()
 
   # Decode the RGB JPEG.
   image = coder.decode_png(image_data)
