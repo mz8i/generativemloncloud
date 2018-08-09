@@ -32,7 +32,7 @@ while getopts 'm:ld:' flag; do
   case "${flag}" in
     m) MODEL_NAME="${OPTARG}"
        ;;
-    l) LIST_JOBS=true
+    l) LIST_MODELS=true
        ;;
     d) TMP_DIR="${OPTARG%/}"
   esac
