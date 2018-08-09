@@ -177,7 +177,7 @@ class Model(object):
           self.crop_image_dimension, self.center_crop)
 
       tensors.image = tf.reshape(tensors.image, [
-          -1, self.resized_image_size, self.resized_image_size, 3
+          -1, self.resized_image_size, self.resized_image_size, 4
       ])
 
       tf.summary.image('original_images', tensors.image, 1)
@@ -186,7 +186,7 @@ class Model(object):
 
     if mode is PREDICT_IMAGE_IN:
       tensors.image = tf.reshape(tensors.image, [
-          -1, self.resized_image_size, self.resized_image_size, 3
+          -1, self.resized_image_size, self.resized_image_size, 4
       ])
       tensors.embeddings, y_mean, _ = self.encode(tensors.image, False)
       tensors.predictions = tensors.embeddings
