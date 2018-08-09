@@ -129,11 +129,9 @@ def _convert_to_example(filename, image_buffer, height, width, channels):
 class ImageCoder(object):
   """Helper class that provides TensorFlow image coding utilities."""
 
-  def __init__(self, n_channels):
+  def __init__(self):
     # Create a single Session to run all image coding calls.
     self._sess = tf.Session()
-
-    self.channels = n_channels
 
     # Initializes function that decodes PNG data.
     self._decode_png_data = tf.placeholder(dtype=tf.string)
