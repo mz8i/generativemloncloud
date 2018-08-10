@@ -451,7 +451,9 @@ class Model(object):
             padding='same',
             name='gen_deconv' + str(i))
         layers.append(deconv)
+        last_i = i
 
+      i = last_i + 1
       # Batch norm
       bn = tf.nn.relu(
           tf.contrib.layers.batch_norm(
@@ -461,9 +463,9 @@ class Model(object):
               epsilon=1e-5,
               scale=True,
               reuse=None,
-              scope='gen_bn3',
+              scope='gen_bn'+str(i),
               is_training=is_training),
-          name='gen_rl3')
+          name='gen_rl'+str(i))
 
       # "Deconvolution" Layer 3
       deconv = tf.layers.conv2d_transpose(
@@ -473,7 +475,7 @@ class Model(object):
           strides=(2, 2),
           padding='same',
           activation=tf.nn.tanh,
-          name='gen_deconv3')
+          name='gen_deconv'+str(i))
 
       return deconv
 
