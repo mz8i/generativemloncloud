@@ -132,6 +132,12 @@ class Model(object):
     self.has_exported_image_in = False
     self.batch_size = 0
 
+    n_conv2d = int(math.log(resized_image_size, 2)) - 2 # how many conv2d layers with stride 2 needed to get down to 4x4
+    initial_filters = 64
+    self.layer_filter_progression = [int(initial_filter * math.pow(2, k)) for k in range(n_conv2d)]
+    self.layer_result_width_progression = [int(resized_image_size / math.pow(2, k)) for k in range(n_conv2d)]
+
+
   def leaky_relu(self, x, name, leak=0.2):
     """Leaky relu activation function.
 
@@ -332,20 +338,23 @@ class Model(object):
     Returns:
       The embedding vector, mean and standard deviation vectors.
     """
+
+    n_filters = self.layer_filter_progression
+    tensor_width = self.layer_result_width_progression
+
     with tf.variable_scope(tf.get_variable_scope(), reuse=None):
       # Convolution Layer 1
       conv = self.leaky_relu(
           tf.layers.conv2d(
               inputs=images,
-              filters=LAYER_DIM,
+              filters=n_filters[0],
               kernel_size=4,
               strides=(2, 2),
               padding='same',
               name='enc_conv0'), 'enc_r0')
 
       layers = [conv]
-      for i, filters in enumerate([LAYER_DIM * 2, LAYER_DIM * 4,
-                                   LAYER_DIM * 8]):
+      for i, filters in enumerate(n_filters[1:]):
         # Convolutional Layer
         conv = tf.layers.conv2d(
             inputs=layers[-1],
@@ -371,7 +380,8 @@ class Model(object):
         layers.append(relu)
 
       # Fully Connected Layer
-      conv4_flat = tf.reshape(layers[-1], [-1, 4 * 4 * LAYER_DIM * 8])
+      last_tensor_n_elements = tensor_width[-1] * tensor_width[-1] * conv2d_layer_filters[-1]
+      conv4_flat = tf.reshape(layers[-1], [-1, last_tensor_n_elements])
 
       # Get Mean and Standard Deviation Vectors
       y_mean = tf.layers.dense(
@@ -401,17 +411,22 @@ class Model(object):
     Returns:
       The decoded images.
     """
+
+    n_filters = reversed(self.layer_filter_progression)
+    tensor_width = reversed(self.layer_result_width_progression)
+
     with tf.variable_scope(tf.get_variable_scope(), reuse=reuse):
       # Fully Connected Layers
+      first_tensor_n_elements = tensor_width[0] * tensor_width[0] * n_filters[0]
       fc3 = tf.layers.dense(
           inputs=embeddings,
-          units=4 * 4 * LAYER_DIM * 8,
+          units=first_tensor_n_elements,
           activation=None,
           name='gen_fc3')
-      fc3_reshaped = tf.reshape(fc3, [-1, 4, 4, LAYER_DIM * 8])
+      fc3_reshaped = tf.reshape(fc3, [-1, tensor_width[0], tensor_width[0], n_filters[0]])
 
       layers = [fc3_reshaped]
-      for i, filters in enumerate([LAYER_DIM * 4, LAYER_DIM * 2, LAYER_DIM]):
+      for i, filters in enumerate(n_filters[1:]):
         # Batch Norm Layer
         bn = tf.contrib.layers.batch_norm(
             layers[-1],
@@ -472,20 +487,23 @@ class Model(object):
     Returns:
       Whether the images are real or fake.
     """
+
+    n_filters = self.layer_filter_progression
+    tensor_width = self.layer_result_width_progression
+
     with tf.variable_scope(tf.get_variable_scope(), reuse=reuse):
       # Convolution Layer 1
       conv = self.leaky_relu(
           tf.layers.conv2d(
               inputs=input_images,
-              filters=LAYER_DIM,
+              filters=n_filters[0],
               kernel_size=4,
               strides=(2, 2),
               padding='same',
               name='disc_conv0'), 'disc_r0')
 
       layers = [conv]
-      for i, filters in enumerate([LAYER_DIM * 2, LAYER_DIM * 4,
-                                   LAYER_DIM * 8]):
+      for i, filters in enumerate(n_filters[1:]):
         # Convolutional Layer
         conv = tf.layers.conv2d(
             inputs=layers[-1],
@@ -511,7 +529,8 @@ class Model(object):
         layers.append(relu)
 
       # Fully Connected Layer
-      conv_flat = tf.reshape(layers[-1], [-1, 4 * 4 * LAYER_DIM * 8])
+      last_tensor_n_elements = tensor_width[-1] * tensor_width[-1] * n_filters[-1]
+      conv_flat = tf.reshape(layers[-1], [-1, last_tensor_n_elements])
       dropout_output = tf.nn.dropout(conv_flat, dropout)
       fc = tf.layers.dense(
           inputs=dropout_output,
