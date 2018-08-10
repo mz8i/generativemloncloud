@@ -15,6 +15,7 @@
 
 import argparse
 import os
+import math
 
 import tensorflow as tf
 
@@ -134,8 +135,8 @@ class Model(object):
 
     n_conv2d = int(math.log(resized_image_size, 2)) - 2 # how many conv2d layers with stride 2 needed to get down to 4x4
     initial_filters = 64
-    self.layer_filter_progression = [int(initial_filter * math.pow(2, k)) for k in range(n_conv2d)]
-    self.layer_result_width_progression = [int(resized_image_size / math.pow(2, k)) for k in range(n_conv2d)]
+    self.layer_filter_progression = [int(initial_filters * math.pow(2, k)) for k in range(n_conv2d)]
+    self.layer_result_width_progression = [int(resized_image_size / math.pow(2, k+1)) for k in range(n_conv2d)]
 
 
   def leaky_relu(self, x, name, leak=0.2):
@@ -380,7 +381,7 @@ class Model(object):
         layers.append(relu)
 
       # Fully Connected Layer
-      last_tensor_n_elements = tensor_width[-1] * tensor_width[-1] * conv2d_layer_filters[-1]
+      last_tensor_n_elements = tensor_width[-1] * tensor_width[-1] * n_filters[-1]
       conv4_flat = tf.reshape(layers[-1], [-1, last_tensor_n_elements])
 
       # Get Mean and Standard Deviation Vectors
@@ -412,8 +413,8 @@ class Model(object):
       The decoded images.
     """
 
-    n_filters = reversed(self.layer_filter_progression)
-    tensor_width = reversed(self.layer_result_width_progression)
+    n_filters = list(reversed(self.layer_filter_progression))
+    tensor_width = list(reversed(self.layer_result_width_progression))
 
     with tf.variable_scope(tf.get_variable_scope(), reuse=reuse):
       # Fully Connected Layers
