@@ -29,8 +29,6 @@ import util
 from util import override_if_not_in_args
 
 # Global constants for Rgb dataset
-EMBEDDING_DIMENSION = 100
-LAYER_DIM = 64
 TRAIN, EVAL = 'TRAIN', 'EVAL'
 PREDICT_EMBED_IN, PREDICT_IMAGE_IN = 'PREDICT_EMBED_IN', 'PREDICT_IMAGE_IN'
 
@@ -69,6 +67,8 @@ def create_model():
   parser.add_argument('--beta1', type=float, default=0.5)
   parser.add_argument('--resized_image_size', type=int, default=64)
   parser.add_argument('--channels', type=int, default=4, choices=[1,3,4])
+  parser.add_argument('--initial_filter_depth', type=int, default=64)
+  parser.add_argument('--embedding_dimension', type=int, default=100)
   parser.add_argument('--crop_image_dimension', type=int, default=None)
   parser.add_argument(
       '--center_crop', dest='center_crop', default=False, action='store_true')
@@ -81,8 +81,8 @@ def create_model():
   override_if_not_in_args('--min_train_eval_rate', '2', task_args)
 
   return Model(args.learning_rate, args.dropout, args.beta1,
-               args.resized_image_size, args.channels, args.crop_image_dimension,
-               args.center_crop), task_args
+               args.resized_image_size, args.channels, args.initial_filter_depth,
+               args.embedding_dimension, args.crop_image_dimension, args.center_crop), task_args
 
 
 class GraphReferences(object):
@@ -111,7 +111,7 @@ class Model(object):
   """Tensorflow model for Rgb VAE-GAN."""
 
   def __init__(self, learning_rate, dropout, beta1, resized_image_size, channels,
-               crop_image_dimension, center_crop):
+               initial_filter_depth, embedding_dimension, crop_image_dimension, center_crop):
     """Initializes VAE-GAN. DCGAN architecture: https://arxiv.org/abs/1511.06434
 
     Args:
@@ -127,6 +127,8 @@ class Model(object):
     self.beta1 = beta1
     self.resized_image_size = resized_image_size
     self.channels = channels
+    self.initial_filter_depth = initial_filter_depth
+    self.embedding_dimension = embedding_dimension
     self.crop_image_dimension = crop_image_dimension
     self.center_crop = center_crop
     self.has_exported_embed_in = False
@@ -134,8 +136,7 @@ class Model(object):
     self.batch_size = 0
 
     n_conv2d = int(math.log(resized_image_size, 2)) - 2 # how many conv2d layers with stride 2 needed to get down to 4x4
-    initial_filters = 64
-    self.layer_filter_progression = [int(initial_filters * math.pow(2, k)) for k in range(n_conv2d)]
+    self.layer_filter_progression = [int(initial_filter_depth * math.pow(2, k)) for k in range(n_conv2d)]
     self.layer_result_width_progression = [int(resized_image_size / math.pow(2, k+1)) for k in range(n_conv2d)]
 
 
@@ -169,7 +170,7 @@ class Model(object):
     if mode is PREDICT_EMBED_IN:
       # Input embeddings to send through decoder/generator network.
       tensors.embeddings = tf.placeholder(
-          tf.float32, shape=(None, EMBEDDING_DIMENSION), name='input')
+          tf.float32, shape=(None, self.embedding_dimension), name='input')
     elif mode is PREDICT_IMAGE_IN:
       tensors.prediction_image = tf.placeholder(
           tf.string, shape=(None,), name='input')
@@ -387,16 +388,16 @@ class Model(object):
       # Get Mean and Standard Deviation Vectors
       y_mean = tf.layers.dense(
           inputs=conv4_flat,
-          units=EMBEDDING_DIMENSION,
+          units=self.embedding_dimension,
           activation=None,
           name='enc_y_mean')
       y_stddev = tf.layers.dense(
           inputs=conv4_flat,
-          units=EMBEDDING_DIMENSION,
+          units=self.embedding_dimension,
           activation=None,
           name='enc_y_stddev')
       samples = tf.random_normal(
-          [self.batch_size, EMBEDDING_DIMENSION], 0, 1, dtype=tf.float32)
+          [self.batch_size, self.embedding_dimension], 0, 1, dtype=tf.float32)
 
       y_vector = y_mean + (y_stddev * samples)
       return y_vector, y_mean, y_stddev
