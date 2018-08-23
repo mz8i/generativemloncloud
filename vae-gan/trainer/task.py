@@ -464,7 +464,7 @@ def run(model, argv):
   if args.write_predictions:
     write_predictions(args, model, cluster, task)
   elif args.evaluate:
-    evalute(args, model, cluster, task)
+    evaluate(args, model, cluster, task)
   else:
     dispatch(args, model, cluster, task)
 
@@ -499,7 +499,7 @@ def write_predictions(args, model, cluster, task):
     raise ValueError('invalid task_type %s' % (task.type,))
 
   logging.info('Starting to write predictions on %s/%d', task.type, task.index)
-  evaluator = Evaluator(args, model, None)
+  evaluator = Evaluator(args, model, args.data_dir)
   evaluator.write_predictions()
   logging.info('Done writing predictions on %s/%d', task.type, task.index)
 
