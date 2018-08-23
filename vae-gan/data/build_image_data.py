@@ -75,10 +75,9 @@ tf.app.flags.DEFINE_integer('num_shards', 2,
                             'Number of shards in TFRecord files.')
 tf.app.flags.DEFINE_integer('num_threads', 2,
                             'Number of threads to preprocess the images.')
-
+tf.app.flags.DEFINE_float('validation_size', 0.1, 'Size of validation set in proportion to whole.')
 FLAGS = tf.app.flags.FLAGS
 
-VALIDATION_SIZE = 0.1
 
 
 def _int64_feature(value):
@@ -329,7 +328,7 @@ def _process_datasets(directory, num_shards):
   """
   filenames = _find_image_files(directory)
 
-  num_train_files = int(len(filenames) * (1 - VALIDATION_SIZE))
+  num_train_files = int(len(filenames) * (1 - FLAGS.validation_size))
   num_validation_files = len(filenames) - num_train_files
 
   train_filenames = filenames[:num_train_files]
