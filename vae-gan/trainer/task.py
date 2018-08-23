@@ -45,7 +45,7 @@ class Evaluator(object):
     self.eval_batch_size = args.eval_batch_size
     self.num_eval_batches = args.eval_set_size // self.eval_batch_size
     self.batch_of_examples = []
-    self.checkpoint_path = eval_dir(args.output_path)
+    self.checkpoint_path = train_dir(args.output_path)
     self.output_path = os.path.join(args.output_path, dataset)
     self.data_dir = data_dir
     self.batch_size = args.batch_size
