@@ -380,6 +380,12 @@ def run(model, argv):
       help='Minimal interval between logging training metrics and saving '
       'training summaries.')
   parser.add_argument(
+      '--evaluate',
+      action='store_true',
+      default=False,
+      help='If set, model is restored from latest checkpoint '
+      'and it is evaluated based on the validation data.')
+  parser.add_argument(
       '--write_predictions',
       action='store_true',
       default=False,
@@ -457,6 +463,8 @@ def run(model, argv):
   cluster = tf.train.ClusterSpec(cluster_data) if cluster_data else None
   if args.write_predictions:
     write_predictions(args, model, cluster, task)
+  elif args.evaluate:
+    evalute(args, model, cluster, task)
   else:
     dispatch(args, model, cluster, task)
 
@@ -495,6 +503,16 @@ def write_predictions(args, model, cluster, task):
   evaluator.write_predictions()
   logging.info('Done writing predictions on %s/%d', task.type, task.index)
 
+def evaluate(args, model, cluster, task):
+  if not cluster or not task or task.type == 'master':
+    pass  # Run locally.
+  else:
+    raise ValueError('invalid task_type %s' % (task.type,))
+
+  logging.info('Starting to evaluate model on %s/%d', task.type, task.index)
+  evaluator = Evaluator(args, model, args.data_dir)
+  evaluator.evaluate()
+  logging.info('Done evaluating model on %s/%d', task.type, task.index)
 
 def dispatch(args, model, cluster, task):
   if not cluster or not task or task.type == 'master':
