@@ -331,11 +331,11 @@ def _process_datasets(directory, num_shards):
   num_train_files = int(len(filenames) * (1 - FLAGS.validation_size))
   num_validation_files = len(filenames) - num_train_files
 
-  if len(num_train_files) != 0:
+  if num_train_files != 0:
     train_filenames = filenames[:num_train_files]
     _process_image_files('train', train_filenames, num_shards)
 
-  if len(num_validation_files) != 0:
+  if num_validation_files != 0:
     validation_filenames = filenames[-num_validation_files:]
     _process_image_files('validation', validation_filenames, num_shards)
 
